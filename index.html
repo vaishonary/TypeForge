@@ -536,13 +536,22 @@ int main() {
     }
   }
 
+  function escapeHtml(text) {
+    const map = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;'
+    };
+    return text.replace(/[&<>]/g, char => map[char]);
+  }
+
   function renderText() {
     const display = document.getElementById('displayText');
     display.innerHTML = targetText.split('').map((ch, i) => {
       let cls = 'pending';
       if (i < currentIndex) cls = 'correct';
       if (i === currentIndex) cls = 'current';
-      const escaped = ch === '<' ? '&lt;' : ch === '>' ? '&gt;' : ch === '&' ? '&amp;' : ch === ' ' ? '&nbsp;' : ch === '\n' ? '\n' : ch;
+      let escaped = ch === ' ' ? '&nbsp;' : ch === '\n' ? '\n' : escapeHtml(ch);
       return `<span class="char ${cls}" data-i="${i}">${escaped}</span>`;
     }).join('');
   }
