@@ -548,9 +548,7 @@ int main() {
   function renderText() {
     const display = document.getElementById('displayText');
     display.innerHTML = targetText.split('').map((ch, i) => {
-      let cls = 'pending';
-      if (i < currentIndex) cls = 'correct';
-      if (i === currentIndex) cls = 'current';
+      let cls = i < currentIndex ? 'correct' : i === currentIndex ? 'current' : 'pending';
       let escaped = ch === ' ' ? '&nbsp;' : ch === '\n' ? '\n' : escapeHtml(ch);
       return `<span class="char ${cls}" data-i="${i}">${escaped}</span>`;
     }).join('');
@@ -618,19 +616,18 @@ int main() {
     const expected = targetText[currentIndex];
     totalTyped++;
 
+    // Mark the current character BEFORE moving the index
     if (ch === expected) {
       markChar(currentIndex, 'correct');
-      currentIndex++;
     } else {
       markChar(currentIndex, 'error');
       errors++;
-      currentIndex++;
     }
+    
+    currentIndex++;
 
-    // Advance cursor
+    // Move cursor to next character
     if (currentIndex < targetText.length) {
-      const prev = document.querySelector(`.char[data-i="${currentIndex - 1}"]`);
-      if (prev) prev.classList.remove('current');
       const curr = document.querySelector(`.char[data-i="${currentIndex}"]`);
       if (curr) curr.classList.add('current');
     }
