@@ -266,6 +266,7 @@
   #displayText .char {
     position: relative;
     transition: color 0.05s;
+    display: inline;
   }
 
   #displayText .char.correct { color: var(--correct); }
@@ -275,21 +276,10 @@
     border-radius: 2px;
   }
   #displayText .char.pending { color: var(--pending); }
-  #displayText .char.current { color: var(--text); }
 
-  #displayText .char.current::after {
-    content: '';
-    position: absolute;
-    left: 0; bottom: -1px;
-    width: 100%; height: 2px;
-    background: var(--cursor);
-    border-radius: 2px;
-    animation: blink 1s step-end infinite;
-  }
-
-  @keyframes blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0; }
+  #displayText .char.current {
+    color: var(--text);
+    border-bottom: 2px solid var(--cursor);
   }
 
   #hiddenInput {
@@ -548,10 +538,19 @@ int main() {
   function renderText() {
     const display = document.getElementById('displayText');
     display.innerHTML = targetText.split('').map((ch, i) => {
-      let cls = i < currentIndex ? 'correct' : i === currentIndex ? 'current' : 'pending';
+      let cls = 'pending';
+      if (i < currentIndex) cls = 'correct';
+      if (i === currentIndex) cls = 'current';
       let escaped = ch === ' ' ? '&nbsp;' : ch === '\n' ? '\n' : escapeHtml(ch);
       return `<span class="char ${cls}" data-i="${i}">${escaped}</span>`;
     }).join('');
+  }
+
+  function updateCharClass(index, newClass) {
+    const el = document.querySelector(`.char[data-i="${index}"]`);
+    if (el) {
+      el.className = `char ${newClass}`;
+    }
   }
 
   function focusInput() {
@@ -591,21 +590,16 @@ int main() {
   document.getElementById('hiddenInput').addEventListener('keydown', function(e) {
     if (e.key === 'Escape') { restartPractice(); return; }
     if (e.key === 'Tab') { e.preventDefault(); handleChar('\t'); return; }
+    if (e.key === 'Enter') { e.preventDefault(); handleChar('\n'); return; }
+    if (e.key === 'Backspace') { e.preventDefault(); handleBackspace(); return; }
   });
 
   document.getElementById('hiddenInput').addEventListener('input', function(e) {
-    // We handle via keydown for special keys; for regular chars use input event
     const val = this.value;
     if (!val) return;
     const ch = val[val.length - 1];
     this.value = '';
     handleChar(ch);
-  });
-
-  // Also handle keypress for Enter
-  document.getElementById('hiddenInput').addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') { e.preventDefault(); handleChar('\n'); }
-    if (e.key === 'Backspace') { e.preventDefault(); handleBackspace(); }
   });
 
   function handleChar(ch) {
@@ -616,20 +610,18 @@ int main() {
     const expected = targetText[currentIndex];
     totalTyped++;
 
-    // Mark the current character BEFORE moving the index
     if (ch === expected) {
-      markChar(currentIndex, 'correct');
+      updateCharClass(currentIndex, 'correct');
     } else {
-      markChar(currentIndex, 'error');
+      updateCharClass(currentIndex, 'error');
       errors++;
     }
     
     currentIndex++;
 
-    // Move cursor to next character
+    // Update cursor to next character
     if (currentIndex < targetText.length) {
-      const curr = document.querySelector(`.char[data-i="${currentIndex}"]`);
-      if (curr) curr.classList.add('current');
+      updateCharClass(currentIndex, 'current');
     }
 
     updateAccuracy();
@@ -647,37 +639,26 @@ int main() {
     if (!curr || !wrap) return;
 
     const wrapHeight = wrap.clientHeight;
-    const lineHeight = 1.9 * 15; // line-height * font-size
-    const padding = lineHeight * 2; // Keep 2 lines of padding
+    const lineHeight = 1.9 * 15;
+    const padding = lineHeight * 2;
 
-    // Get position relative to the displayText container
     const charRelativeTop = curr.offsetTop;
-    
-    // Calculate where the character should be in the viewport
     const targetScrollTop = Math.max(0, charRelativeTop - padding);
     
-    // Direct scroll positioning
     wrap.scrollTop = targetScrollTop;
   }
 
   function handleBackspace() {
     if (currentIndex <= 0) return;
-    const curr = document.querySelector(`.char[data-i="${currentIndex}"]`);
-    if (curr) curr.classList.remove('current');
+    
+    updateCharClass(currentIndex, 'pending');
     currentIndex--;
-    const prev = document.querySelector(`.char[data-i="${currentIndex}"]`);
-    if (prev) {
-      prev.className = 'char current';
-    }
+    updateCharClass(currentIndex, 'current');
+    
     if (totalTyped > 0) totalTyped--;
     updateAccuracy();
     updateProgress();
     scrollToCurrent();
-  }
-
-  function markChar(i, cls) {
-    const el = document.querySelector(`.char[data-i="${i}"]`);
-    if (el) { el.className = `char ${cls}`; }
   }
 
   function finishPractice() {
