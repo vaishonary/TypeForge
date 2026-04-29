@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TypeForge — Code Typing Practice</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d0f;
+    --surface: #141416;
+    --surface2: #1a1a1d;
+    --border: #2a2a2f;
+    --text: #e8e8f0;
+    --muted: #4a4a58;
+    --accent: #00ff9d;
+    --accent-dim: rgba(0,255,157,0.12);
+    --error: #ff4757;
+    --error-dim: rgba(255,71,87,0.18);
+    --correct: #00ff9d;
+    --pending: #3a3a48;
+    --cursor: #00ff9d;
+    --wpm-color: #7c6af7;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    top: -200px; left: -200px;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(0,255,157,0.04) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    bottom: -200px; right: -200px;
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(124,106,247,0.05) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 860px;
+    position: relative;
+    z-index: 1;
+  }
+
+  header {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 48px;
+  }
+
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+
+  .logo span {
+    color: var(--accent);
+  }
+
+  .tagline {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding-bottom: 2px;
+  }
+
+  /* SCREENS */
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* SETUP SCREEN */
+  .setup-label {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  textarea#codeInput {
+    width: 100%;
+    height: 260px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    padding: 20px;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s;
+    tab-size: 4;
+  }
+
+  textarea#codeInput::placeholder { color: var(--muted); }
+  textarea#codeInput:focus { border-color: var(--accent); }
+
+  .setup-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+    align-items: center;
+  }
+
+  .btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 12px 28px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.5px;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #0d0d0f;
+  }
+  .btn-primary:hover { background: #00e88d; transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { color: var(--text); border-color: var(--muted); }
+
+  .hint {
+    font-size: 11px;
+    color: var(--muted);
+    margin-left: auto;
+  }
+
+  /* PRACTICE SCREEN */
+  .stats-bar {
+    display: flex;
+    gap: 32px;
+    margin-bottom: 28px;
+    padding: 16px 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    align-items: center;
+  }
+
+  .stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .stat-value {
+    font-family: 'Syne', sans-serif;
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  #wpmVal { color: var(--wpm-color); }
+  #accVal { color: var(--accent); }
+  #timeVal { color: var(--text); }
+
+  .stat-divider {
+    width: 1px;
+    height: 36px;
+    background: var(--border);
+  }
+
+  .progress-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-left: auto;
+  }
+
+  .progress-label {
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-align: right;
+  }
+
+  .progress-bar {
+    height: 4px;
+    background: var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--wpm-color), var(--accent));
+    border-radius: 4px;
+    transition: width 0.3s ease;
+    width: 0%;
+  }
+
+  /* TYPING AREA */
+  .typing-wrap {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 28px;
+    margin-bottom: 16px;
+    cursor: text;
+    transition: border-color 0.2s;
+    height: 420px;
+    overflow-y: auto;
+  }
+
+  .typing-wrap:focus-within { border-color: rgba(0,255,157,0.3); }
+
+  #displayText {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 15px;
+    line-height: 1.9;
+    white-space: pre-wrap;
+    word-break: break-all;
+    user-select: none;
+    position: relative;
+  }
+
+  #displayText .char {
+    position: relative;
+    transition: color 0.05s;
+  }
+
+  #displayText .char.correct { color: var(--correct); }
+  #displayText .char.error {
+    color: var(--error);
+    background: var(--error-dim);
+    border-radius: 2px;
+  }
+  #displayText .char.pending { color: var(--pending); }
+  #displayText .char.current { color: var(--text); }
+
+  #displayText .char.current::after {
+    content: '';
+    position: absolute;
+    left: 0; bottom: -1px;
+    width: 100%; height: 2px;
+    background: var(--cursor);
+    border-radius: 2px;
+    animation: blink 1s step-end infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  #hiddenInput {
+    position: fixed;
+    opacity: 0;
+    top: 50%; left: 50%;
+    width: 1px; height: 1px;
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+  }
+
+  .click-hint {
+    text-align: center;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    margin-bottom: 20px;
+  }
+
+  .practice-actions {
+    display: flex;
+    gap: 12px;
+  }
+
+  /* RESULT SCREEN */
+  .result-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 48px;
+    text-align: center;
+    margin-bottom: 24px;
+  }
+
+  .result-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 32px;
+  }
+
+  .result-stats {
+    display: flex;
+    justify-content: center;
+    gap: 64px;
+    margin-bottom: 40px;
+  }
+
+  .result-stat-value {
+    font-family: 'Syne', sans-serif;
+    font-size: 56px;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+
+  .result-stat-label {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  #resultWpm { color: var(--wpm-color); }
+  #resultAcc { color: var(--accent); }
+  #resultTime { color: var(--text); }
+
+  .result-message {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .result-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo">Type<span>Forge</span></div>
+    <div class="tagline">Code Typing Practice</div>
+  </header>
+
+  <!-- SETUP SCREEN -->
+  <div class="screen active" id="setupScreen">
+    <div class="setup-label">Paste your code or text below</div>
+    <textarea id="codeInput" placeholder="// Paste your C code, DS implementation, or any text here...
+// Example:
+// struct Node {
+//     int data;
+//     struct Node* next;
+// };"></textarea>
+    <div class="setup-actions">
+      <button class="btn btn-primary" onclick="startPractice()">Start Typing →</button>
+      <button class="btn btn-ghost" onclick="loadSample()">Load Sample C Code</button>
+      <span class="hint">Tab key supported</span>
+    </div>
+  </div>
+
+  <!-- PRACTICE SCREEN -->
+  <div class="screen" id="practiceScreen">
+    <div class="stats-bar">
+      <div class="stat">
+        <div class="stat-value" id="wpmVal">0</div>
+        <div class="stat-label">WPM</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <div class="stat-value" id="accVal">100%</div>
+        <div class="stat-label">Accuracy</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <div class="stat-value" id="timeVal">0s</div>
+        <div class="stat-label">Time</div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-label" id="progressLabel">0%</div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      </div>
+    </div>
+
+    <div class="typing-wrap" onclick="focusInput()">
+      <div id="displayText"></div>
+      <input id="hiddenInput" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+    </div>
+    <div class="click-hint">click above to focus · esc to restart</div>
+
+    <div class="practice-actions">
+      <button class="btn btn-ghost" onclick="resetToSetup()">← Change Text</button>
+      <button class="btn btn-ghost" onclick="restartPractice()">Restart</button>
+    </div>
+  </div>
+
+  <!-- RESULT SCREEN -->
+  <div class="screen" id="resultScreen">
+    <div class="result-card">
+      <div class="result-title">Session Complete</div>
+      <div class="result-stats">
+        <div class="result-stat">
+          <div class="result-stat-value" id="resultWpm">0</div>
+          <div class="result-stat-label">WPM</div>
+        </div>
+        <div class="result-stat">
+          <div class="result-stat-value" id="resultAcc">0%</div>
+          <div class="result-stat-label">Accuracy</div>
+        </div>
+        <div class="result-stat">
+          <div class="result-stat-value" id="resultTime">0s</div>
+          <div class="result-stat-label">Time</div>
+        </div>
+      </div>
+      <div class="result-message" id="resultMessage"></div>
+    </div>
+    <div class="result-actions">
+      <button class="btn btn-primary" onclick="restartPractice()">Practice Again</button>
+      <button class="btn btn-ghost" onclick="resetToSetup()">New Text</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let targetText = '';
+  let currentIndex = 0;
+  let errors = 0;
+  let totalTyped = 0;
+  let startTime = null;
+  let timerInterval = null;
+  let elapsed = 0;
+  let started = false;
+
+  const SAMPLE_CODE = `#include <stdio.h>
+#include <stdlib.h>
+
+struct Node {
+    int data;
+    struct Node* next;
+};
+
+struct Node* createNode(int data) {
+    struct Node* node = malloc(sizeof(struct Node));
+    node->data = data;
+    node->next = NULL;
+    return node;
+}
+
+void printList(struct Node* head) {
+    while (head != NULL) {
+        printf("%d -> ", head->data);
+        head = head->next;
+    }
+    printf("NULL\\n");
+}
+
+int main() {
+    struct Node* head = createNode(1);
+    head->next = createNode(2);
+    head->next->next = createNode(3);
+    printList(head);
+    return 0;
+}`;
+
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  function loadSample() {
+    document.getElementById('codeInput').value = SAMPLE_CODE;
+  }
+
+  function startPractice() {
+    const raw = document.getElementById('codeInput').value;
+    if (!raw.trim()) { alert('Please paste some text first!'); return; }
+    targetText = raw;
+    resetState();
+    renderText();
+    showScreen('practiceScreen');
+    setTimeout(focusInput, 100);
+  }
+
+  function resetState() {
+    currentIndex = 0;
+    errors = 0;
+    totalTyped = 0;
+    startTime = null;
+    elapsed = 0;
+    started = false;
+    clearInterval(timerInterval);
+    document.getElementById('wpmVal').textContent = '0';
+    document.getElementById('accVal').textContent = '100%';
+    document.getElementById('timeVal').textContent = '0s';
+    document.getElementById('progressFill').style.width = '0%';
+    document.getElementById('progressLabel').textContent = '0%';
+    if (document.getElementById('hiddenInput')) {
+      document.getElementById('hiddenInput').value = '';
+    }
+  }
+
+  function renderText() {
+    const display = document.getElementById('displayText');
+    display.innerHTML = targetText.split('').map((ch, i) => {
+      let cls = 'pending';
+      if (i < currentIndex) cls = 'correct';
+      if (i === currentIndex) cls = 'current';
+      const escaped = ch === '<' ? '&lt;' : ch === '>' ? '&gt;' : ch === '&' ? '&amp;' : ch === ' ' ? '&nbsp;' : ch === '\n' ? '\n' : ch;
+      return `<span class="char ${cls}" data-i="${i}">${escaped}</span>`;
+    }).join('');
+  }
+
+  function focusInput() {
+    const inp = document.getElementById('hiddenInput');
+    inp.focus({ preventScroll: true });
+  }
+
+  function startTimer() {
+    startTime = Date.now();
+    timerInterval = setInterval(() => {
+      elapsed = Math.floor((Date.now() - startTime) / 1000);
+      document.getElementById('timeVal').textContent = elapsed + 's';
+      updateWPM();
+    }, 500);
+  }
+
+  function updateWPM() {
+    if (!startTime) return;
+    const minutes = (Date.now() - startTime) / 60000;
+    const words = currentIndex / 5;
+    const wpm = minutes > 0 ? Math.round(words / minutes) : 0;
+    document.getElementById('wpmVal').textContent = wpm;
+  }
+
+  function updateAccuracy() {
+    if (totalTyped === 0) { document.getElementById('accVal').textContent = '100%'; return; }
+    const acc = Math.round(((totalTyped - errors) / totalTyped) * 100);
+    document.getElementById('accVal').textContent = acc + '%';
+  }
+
+  function updateProgress() {
+    const pct = Math.round((currentIndex / targetText.length) * 100);
+    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('progressLabel').textContent = pct + '%';
+  }
+
+  document.getElementById('hiddenInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') { restartPractice(); return; }
+    if (e.key === 'Tab') { e.preventDefault(); handleChar('\t'); return; }
+  });
+
+  document.getElementById('hiddenInput').addEventListener('input', function(e) {
+    // We handle via keydown for special keys; for regular chars use input event
+    const val = this.value;
+    if (!val) return;
+    const ch = val[val.length - 1];
+    this.value = '';
+    handleChar(ch);
+  });
+
+  // Also handle keypress for Enter
+  document.getElementById('hiddenInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); handleChar('\n'); }
+    if (e.key === 'Backspace') { e.preventDefault(); handleBackspace(); }
+  });
+
+  function handleChar(ch) {
+    if (currentIndex >= targetText.length) return;
+
+    if (!started) { started = true; startTimer(); }
+
+    const expected = targetText[currentIndex];
+    totalTyped++;
+
+    if (ch === expected) {
+      markChar(currentIndex, 'correct');
+      currentIndex++;
+    } else {
+      markChar(currentIndex, 'error');
+      errors++;
+      currentIndex++;
+    }
+
+    // Advance cursor
+    if (currentIndex < targetText.length) {
+      const prev = document.querySelector(`.char[data-i="${currentIndex - 1}"]`);
+      if (prev) prev.classList.remove('current');
+      const curr = document.querySelector(`.char[data-i="${currentIndex}"]`);
+      if (curr) curr.classList.add('current');
+    }
+
+    updateAccuracy();
+    updateProgress();
+    scrollToCurrent();
+
+    if (currentIndex >= targetText.length) {
+      finishPractice();
+    }
+  }
+
+  function scrollToCurrent() {
+    const curr = document.querySelector(`.char[data-i="${currentIndex}"]`);
+    const wrap = document.querySelector('.typing-wrap');
+    if (!curr || !wrap) return;
+
+    const wrapHeight = wrap.clientHeight;
+    const lineHeight = 1.9 * 15; // line-height * font-size
+    const padding = lineHeight * 2; // Keep 2 lines of padding
+
+    // Get position relative to the displayText container
+    const charRelativeTop = curr.offsetTop;
+    
+    // Calculate where the character should be in the viewport
+    const targetScrollTop = Math.max(0, charRelativeTop - padding);
+    
+    // Direct scroll positioning
+    wrap.scrollTop = targetScrollTop;
+  }
+
+  function handleBackspace() {
+    if (currentIndex <= 0) return;
+    const curr = document.querySelector(`.char[data-i="${currentIndex}"]`);
+    if (curr) curr.classList.remove('current');
+    currentIndex--;
+    const prev = document.querySelector(`.char[data-i="${currentIndex}"]`);
+    if (prev) {
+      prev.className = 'char current';
+    }
+    if (totalTyped > 0) totalTyped--;
+    updateAccuracy();
+    updateProgress();
+    scrollToCurrent();
+  }
+
+  function markChar(i, cls) {
+    const el = document.querySelector(`.char[data-i="${i}"]`);
+    if (el) { el.className = `char ${cls}`; }
+  }
+
+  function finishPractice() {
+    clearInterval(timerInterval);
+    const minutes = elapsed / 60 || 0.016;
+    const wpm = Math.round((targetText.length / 5) / (minutes || 0.016));
+    const acc = totalTyped > 0 ? Math.round(((totalTyped - errors) / totalTyped) * 100) : 100;
+
+    document.getElementById('resultWpm').textContent = wpm;
+    document.getElementById('resultAcc').textContent = acc + '%';
+    document.getElementById('resultTime').textContent = elapsed + 's';
+
+    let msg = '';
+    if (wpm >= 60 && acc >= 95) msg = 'Excellent! You\'re a typing machine 🔥';
+    else if (wpm >= 40 && acc >= 90) msg = 'Great work! Keep practicing daily 💪';
+    else if (acc >= 85) msg = 'Good accuracy! Focus on building speed next 🚀';
+    else msg = 'Keep going! Accuracy improves with repetition ✨';
+    document.getElementById('resultMessage').textContent = msg;
+
+    showScreen('resultScreen');
+  }
+
+  function restartPractice() {
+    resetState();
+    renderText();
+    showScreen('practiceScreen');
+    setTimeout(focusInput, 100);
+  }
+
+  function resetToSetup() {
+    clearInterval(timerInterval);
+    showScreen('setupScreen');
+  }
+</script>
+</body>
+</html>
